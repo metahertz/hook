@@ -30,7 +30,7 @@ type tinkConfig struct {
 
 	// Grpc stuff (dunno)
 	grpcAuthority string
-	grpcCertURL   string
+	tinkerbellTLS string
 
 	// Worker ID(s) .. why are there two?
 	workerID string
@@ -63,19 +63,23 @@ func main() {
 	// Generate the path to the tink-worker
 	imageName := fmt.Sprintf("%s/tink-worker:latest", cfg.registry)
 
+	env := []string{
+		fmt.Sprintf("DOCKER_REGISTRY=%s", cfg.registry),
+		fmt.Sprintf("REGISTRY_USERNAME=%s", cfg.username),
+		fmt.Sprintf("REGISTRY_PASSWORD=%s", cfg.password),
+		fmt.Sprintf("TINKERBELL_GRPC_AUTHORITY=%s", cfg.grpcAuthority),
+		fmt.Sprintf("WORKER_ID=%s", cfg.workerID),
+		fmt.Sprintf("ID=%s", cfg.workerID),
+		fmt.Sprintf("container_uuid=%s", cfg.MetadataID),
+	}
+	if cfg.tinkerbellTLS != "" {
+		env = append(env, fmt.Sprintf("TINKERBELL_TLS=%s", cfg.tinkerbellTLS))
+	}
+
 	// Generate the configuration of the container
 	tinkContainer := &container.Config{
-		Image: imageName,
-		Env: []string{
-			fmt.Sprintf("DOCKER_REGISTRY=%s", cfg.registry),
-			fmt.Sprintf("REGISTRY_USERNAME=%s", cfg.username),
-			fmt.Sprintf("REGISTRY_PASSWORD=%s", cfg.password),
-			fmt.Sprintf("TINKERBELL_GRPC_AUTHORITY=%s", cfg.grpcAuthority),
-			fmt.Sprintf("TINKERBELL_CERT_URL=%s", cfg.grpcCertURL),
-			fmt.Sprintf("WORKER_ID=%s", cfg.workerID),
-			fmt.Sprintf("ID=%s", cfg.workerID),
-			fmt.Sprintf("container_uuid=%s", cfg.MetadataID),
-		},
+		Image:        imageName,
+		Env:          env,
 		AttachStdout: true,
 		AttachStderr: true,
 	}
@@ -173,8 +177,8 @@ func parseCmdLine(cmdLines []string) (cfg tinkConfig) {
 		// Find GRPC configuration
 		case "grpc_authority":
 			cfg.grpcAuthority = cmdLine[1]
-		case "grpc_cert_url":
-			cfg.grpcCertURL = cmdLine[1]
+		case "tinkerbell_tls":
+			cfg.tinkerbellTLS = cmdLine[1]
 		// Find the worker configuration
 		case "worker_id":
 			cfg.workerID = cmdLine[1]
